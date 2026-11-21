@@ -6,6 +6,7 @@ from app.telemetry.state import MatchStateManager
 from app.telemetry.parser import parse_fmlens_player_metadata
 from app.tactics.rules import evaluate_player_fatigue
 from app.tactics.llm_advisor import generate_jose_advice
+from app.integrations.fmmatchlens import fetch_player_names
 
 app = FastAPI(
     title="José Guardiniho Backend",
@@ -38,6 +39,8 @@ async def get_match_frames(
             status_code=503, 
             detail="Unable to fetch frames from FMMatchLens telemetry provider. Ensure FM27 and the plugin are running."
         )
+    LIVE_PLAYER_NAMES_MAP.update(await fetch_player_names())
+
     for frame in frames:
         state_manager.update_state(frame)
 
