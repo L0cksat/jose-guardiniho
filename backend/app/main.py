@@ -1,10 +1,10 @@
 from fastapi import FastAPI, HTTPException, Query
 from typing import List, Optional
 from app.integrations.fmmatchlens import fetch_match_frames
-from app.telemetry.models import MatchFrame
+from app.telemetry.models import MatchFrame, PlayerFrame
 from app.telemetry.state import MatchStateManager
 from app.telemetry.parser import parse_fmlens_player_metadata
-from app.tactics.rules import evaluate_player_fatigue
+from app.tactics.rules import evaluate_player_fatigue, count_home_flanks, short_flank
 from app.tactics.llm_advisor import generate_jose_advice
 from app.integrations.fmmatchlens import fetch_player_names
 
@@ -58,7 +58,7 @@ async def get_recent_state():
 
 @app.get("/api/match/state/latest", response_model=Optional[MatchFrame])
 async def get_latest_state():
-    """Retrieve the absolute lateste match frame observation stored in memory."""
+    """Retrieve the absolute latest match frame observation stored in memory."""
     return state_manager.get_latest_frame()
 
 @app.get("/api/tactics/analysis/fatigue")
@@ -149,4 +149,23 @@ async def seed_mock_frame():
         "message": "Mock frame seeded successfully into memory!",
         "frame": mock_frame
     }
+
+ys = [
+    27.88177, -7.565001, -2.0313807, -2.0146089, -27.16998,
+    -23.115896, -32.34505, -26.522415, -12.115001, -11.465,
+    -31.306904, -12.548943, -20.41734, -29.62739,
+]
+frame = MatchFrame(
+    match_id = "match-1795519768911",
+    sequence=107476,
+    tick=23183,
+    display_tick=22366,
+    period=2,
+    captured_unix_milliseconds=1795522617438,
+    ball_y_centimeters=-2366,
+    players=[PlayerFrame(player_id=i, team="home", y=y) for i, y in enumerate(ys)],
+)
+print(count_home_flanks(frame))
+print(short_flank(frame))
+
 
