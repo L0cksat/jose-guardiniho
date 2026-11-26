@@ -38,8 +38,32 @@ def count_home_flanks(frame) -> tuple[int, int]:
             above += 1
     return below, above
 
-def short_flank(frame, minimum: int = 6) -> str | None:
+def short_flank(frame, minimum: int = 4) -> str | None:
     below, above = count_home_flanks(frame)
     if below < minimum:
         return f"Short flank: {below} home players on the ball's side"
+    return None
+
+def count_press(frame: MatchFrame, user_team: str = "home", radius_m: float = 4) -> int:
+    opponents = "away" if user_team == "home" else "home"
+    
+    ball_x_m = frame.ball_x_centimeters / 100
+    ball_y_m = frame.ball_y_centimeters / 100
+    near = 0
+
+    for player in frame.players or []:
+        if player.team != opponents or player.x is None or player.y is None:
+            continue
+             
+        dx = player.x - ball_x_m
+        dy = player.y - ball_y_m
+
+        if (dx * dx + dy * dy) ** 0.5 < radius_m: near += 1
+
+    return near
+
+def press_warning(frame, user_team, minimum: int = 3) -> str | None:
+    near = count_press(frame, user_team)
+    if near >= minimum:
+        return f"Press: {near} away players inside the 4 m."
     return None

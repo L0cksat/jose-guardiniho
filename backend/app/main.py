@@ -4,7 +4,7 @@ from app.integrations.fmmatchlens import fetch_match_frames
 from app.telemetry.models import MatchFrame, PlayerFrame
 from app.telemetry.state import MatchStateManager
 from app.telemetry.parser import parse_fmlens_player_metadata
-from app.tactics.rules import evaluate_player_fatigue, count_home_flanks, short_flank
+from app.tactics.rules import evaluate_player_fatigue, count_home_flanks, short_flank, count_press, press_warning
 from app.tactics.llm_advisor import generate_jose_advice
 from app.integrations.fmmatchlens import fetch_player_names
 
@@ -97,6 +97,23 @@ async def analyze_fatigue(
         "jose_advice": manager_advice
     }
 
+@app.get("/api/tactics/analysis/shape")
+async def analyze_shape(user_team: str = "home", from_tick: int =1):
+    frames = await fetch_match_frames(from_tick=from_tick, limit=1)
+    if not frames:
+        return {"user_team": user_team, "detail": "No frame captured."}
+    frame = frames[-1]
+    below, above = count_home_flanks(frame)
+    return {
+        "user_team": user_team,
+        "tick": frame.tick,
+        "flank_below": below,
+        "flank_above": above,
+        "short_flank": short_flank(frame),
+        "press_count": count_press(frame, user_team),
+        "press_warning": press_warning(frame, user_team),
+    }
+
 from app.telemetry.models import PlayerFrame
 
 @app.post("/api/match/frames/seed-mock")
@@ -149,23 +166,4 @@ async def seed_mock_frame():
         "message": "Mock frame seeded successfully into memory!",
         "frame": mock_frame
     }
-
-ys = [
-    27.88177, -7.565001, -2.0313807, -2.0146089, -27.16998,
-    -23.115896, -32.34505, -26.522415, -12.115001, -11.465,
-    -31.306904, -12.548943, -20.41734, -29.62739,
-]
-frame = MatchFrame(
-    match_id = "match-1795519768911",
-    sequence=107476,
-    tick=23183,
-    display_tick=22366,
-    period=2,
-    captured_unix_milliseconds=1795522617438,
-    ball_y_centimeters=-2366,
-    players=[PlayerFrame(player_id=i, team="home", y=y) for i, y in enumerate(ys)],
-)
-print(count_home_flanks(frame))
-print(short_flank(frame))
-
 
