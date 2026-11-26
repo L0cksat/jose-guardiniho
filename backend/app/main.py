@@ -1,3 +1,4 @@
+import sqlite3
 from fastapi import FastAPI, HTTPException, Query
 from typing import List, Optional
 from app.integrations.fmmatchlens import fetch_match_frames
@@ -104,6 +105,16 @@ async def analyze_shape(user_team: str = "home", from_tick: int =1):
         return {"user_team": user_team, "detail": "No frame captured."}
     frame = frames[-1]
     below, above = count_home_flanks(frame)
+    connection = sqlite3.connect("jose.db")
+    connection.execute(
+        """
+        INSERT OR REPLACE INTO match_frame
+        (match_id, tick, user_team, flank_below, flank_above, press_count) VALUES (?, ?, ?, ?, ?, ?)        
+        """,
+        (frame.match_id, frame.tick, user_team, below, above, count_press(frame, user_team))
+    )
+    connection.commit()
+    connection.close()
     return {
         "user_team": user_team,
         "tick": frame.tick,
@@ -113,6 +124,7 @@ async def analyze_shape(user_team: str = "home", from_tick: int =1):
         "press_count": count_press(frame, user_team),
         "press_warning": press_warning(frame, user_team),
     }
+    
 
 from app.telemetry.models import PlayerFrame
 
